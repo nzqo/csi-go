@@ -1,0 +1,11 @@
+diff --unified --recursive --no-dereference --text --unidirectional-new-file --ignore-trailing-space --ignore-space-change '--exclude=.git' '--exclude=README*' '--exclude=*.pdf' '--exclude=*.svg' '--exclude=*.vim' module_src/ath_original/ath9k/xmit.c module_src/ath/ath9k/xmit.c
+--- module_module_src/ath_original/ath9k/xmit.c	2015-10-03 13:49:38.000000000 +0200
++++ module_src/ath/ath9k/xmit.c	2023-08-02 10:36:57.302125616 +0200
+@@ -2736,7 +2736,6 @@
+ 	for (;;) {
+ 		if (test_bit(ATH_OP_HW_RESET, &common->op_flags))
+ 			break;
+-
+ 		status = ath9k_hw_txprocdesc(ah, NULL, (void *)&ts);
+ 		if (status == -EINPROGRESS)
+ 			break;

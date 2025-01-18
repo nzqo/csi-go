@@ -1,0 +1,11 @@
+diff --unified --recursive --no-dereference --text --unidirectional-new-file --ignore-trailing-space --ignore-space-change '--exclude=.git' '--exclude=README*' '--exclude=*.pdf' '--exclude=*.svg' '--exclude=*.vim' module_src/iwlwifi_orig/Kconfig module_src/iwlwifi/Kconfig
+--- module_src/iwlwifi_orig/Kconfig
++++ module_src/iwlwifi/Kconfig
+@@ -57,6 +57,7 @@
+ config IWLDVM
+ 	tristate "Intel Wireless WiFi DVM Firmware support"
+ 	depends on MAC80211
++	depends on CONNECTOR
+ 	help
+ 	  This is the driver that supports the DVM firmware. The list
+ 	  of the devices that use this firmware is available here:

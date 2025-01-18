@@ -1,0 +1,12 @@
+diff --unified --recursive --no-dereference --text --unidirectional-new-file --ignore-trailing-space --ignore-space-change '--exclude=.git' '--exclude=README*' '--exclude=*.pdf' '--exclude=*.svg' '--exclude=*.vim' module_src/iwlwifi_original/iwl-5000.c module_src/iwlwifi/iwl-5000.c
+--- module_src/iwlwifi_original/iwl-5000.c	2023-04-13 16:55:55.790509932 +0200
++++ module_src/iwlwifi/iwl-5000.c	2023-03-16 20:02:29.032349834 +0100
+@@ -35,7 +35,7 @@
+ #define IWL5150_UCODE_API_MAX 2
+ 
+ /* Oldest version we won't warn about */
+-#define IWL5000_UCODE_API_OK 5
++#define IWL5000_UCODE_API_OK 2
+ #define IWL5150_UCODE_API_OK 2
+ 
+ /* Lowest firmware API version supported */

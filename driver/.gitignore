@@ -1,0 +1,9 @@
+# Both build and source directory are temporary as they pertain to the current
+# system being in use. We only maintain patch files and it is intended to have
+# them applied onto the suitable kernel module source files. Only once that is
+# done should you build.
+build
+src
+module_src
+driver_src
+kernel_source

@@ -1,0 +1,31 @@
+---
+BasedOnStyle: Google
+AccessModifierOffset: 0
+ColumnLimit: 90
+TabWidth: 4
+IndentWidth: 4
+AccessModifierOffset: -4
+AlignAfterOpenBracket: Align
+AlignConsecutiveMacros: true
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+AlignOperands: true
+AlignTrailingComments: true
+AllowShortBlocksOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowAllParametersOfDeclarationOnNextLine: false
+BinPackArguments: false
+BinPackParameters: false
+BreakBeforeBinaryOperators: All
+BreakBeforeBraces: Linux
+Cpp11BracedListStyle: true
+ExperimentalAutoDetectBinPacking: false
+SortIncludes: true
+UseTab: Never
+SpaceAfterCStyleCast: true
+DerivePointerAlignment: false
+PointerAlignment: Left
+PenaltyBreakBeforeFirstCallParameter: 9999
+
+...

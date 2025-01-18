@@ -1,0 +1,492 @@
+diff --unified --recursive --no-dereference --text --unidirectional-new-file --ignore-trailing-space --ignore-space-change '--exclude=.git' '--exclude=README*' '--exclude=*.pdf' '--exclude=*.svg' '--exclude=*.vim' module_src/ath_orig/ath9k/ar9003_csi.c module_src/ath/ath9k/ar9003_csi.c
+--- module_src/ath_orig/ath9k/ar9003_csi.c
++++ module_src/ath/ath9k/ar9003_csi.c
+@@ -0,0 +1,488 @@
++/*
++ * =====================================================================================
++ *       Filename:  ar9003_csi.c
++ *
++ *    Description:  extract CSI and data together from hardware
++ *        Version:  1.0
++ *
++ *         Author:  Yaxiong Xie
++ *         Email :  <xieyaxiongfly@gmail.com>
++ *   Organization:  WANDS group @ Nanyang Technological University
++ *
++ *   Copyright (c)  WANDS group @ Nanyang Technological University
++ *
++ *   Refurbished by: Fabian Portner <fportner@tudelft.nl>
++ * =====================================================================================
++ */
++
++// Format macro used by pr_* printk kernel print aliases.
++#define pr_fmt(fmt) "ath9k-csi-driver (%s): " fmt, __func__
++
++#include <linux/module.h>
++#include <linux/init.h>
++#include <linux/kernel.h>
++#include <linux/fs.h>
++#include <linux/wait.h>
++#include <linux/netdevice.h>
++#include <linux/version.h>
++#include <linux/mutex.h>
++
++#include "ar9003_csi.h"
++#include "ar9003_mac.h"
++#include "ar9003_phy.h"
++#include "mac.h"
++#include "hw.h"
++
++#define TX_BUF_LEN                     20480   // Internal CSI packet buffer size
++#define CSI_BUF_SIZE                     256   // Internal CSI ringbuffer size
++#define CSI_BUF_MASK              0x000000FF   // CSI buffer bitmask for wraparound (this is 255 = 0b11111111)
++
++#define AH_MAX_CHAINS                      3   // Maximum receiver chain number; we set it to 3
++#define NUM_OF_CHAINMASK (1 << AH_MAX_CHAINS)  // Number of possible active antenna configurations
++
++#define BITS_PER_BYTE           8
++#define BITS_PER_SYMBOL         10
++#define BITS_PER_COMPLEX_SYMBOL (2 * BITS_PER_SYMBOL)
++
++#define DEVICE_NAME    "CSI_dev"
++#define CLASS_NAME     "CSI_class"
++
++// File/Buffer handling variables
++volatile u32             csi_head;
++volatile u32             csi_tail;
++volatile u32             csi_len;
++volatile u32             n_readers;
++volatile bool            csi_valid;
++
++// CSI and intermediate buffer used to construct CSI packets for user
++static struct ath9k_csi  csi_buf[CSI_BUF_SIZE];
++static char              tx_buf[TX_BUF_LEN];
++
++// Character device handling variables
++static int               major_number;
++static struct class*     ebbchar_class  = NULL;
++static struct device*    ebbchar_device = NULL;
++
++DECLARE_WAIT_QUEUE_HEAD(csi_queue);
++
++// Had a lot of issues with the queue being wrongly advanced. This is a temporary
++// test to see whether it is due to race conditions..
++static spinlock_t csi_lock;
++
++u_int8_t ar9300_get_nrx_csi(struct ath_hw* ah);
++
++/*
++ * Functions for operations file (File that is used to store CSI records)
++ */
++static int csi_open(struct inode *inode, struct file *file);
++static int csi_close(struct inode *inode, struct file *file);
++
++static ssize_t csi_read(
++    struct file* file,
++    char __user* user_buf,
++    size_t          count,
++    loff_t*         ppos);
++
++static ssize_t csi_write(
++    struct file*       file,
++    const char __user* user_buf,
++    size_t             count,
++    loff_t*            ppos);
++
++static const struct file_operations csi_fops = {
++    .read           = csi_read,
++    .write          = csi_write,
++    .open           = csi_open,
++    .release        = csi_close,
++    .llseek         = default_llseek,
++};
++
++static u_int8_t num_ones_in_binary_repr[NUM_OF_CHAINMASK] = {
++    0,   // pos 0 = 000
++    1,   // pos 1 = 001
++    1,   // pos 2 = 010
++    2,   // pos 3 = 011
++    1,   // pos 4 = 100
++    2,   // pos 5 = 101
++    2,   // pos 6 = 110
++    3,   // pos 7 = 111
++};
++
++u_int8_t ar9300_get_nrx_csi(struct ath_hw* ah)
++{
++    return num_ones_in_binary_repr[ah->rxchainmask];
++}
++
++static int __init csi_init(void)
++{
++
++    // Initalize parameters
++    csi_head    = 0;
++    csi_tail    = 0;
++    n_readers   = 0;
++    csi_valid   = false;
++
++    // Try to dynamically allocate a major number for the device -- more difficult but worth it
++    major_number = register_chrdev(0, DEVICE_NAME, &csi_fops);
++    if (major_number < 0) {
++        pr_alert("Failed to register character device -- received no major number.");
++        return major_number;
++    }
++    pr_info("Registered character device for CSI collection with major number %d\n", major_number);
++
++    // Register the device class. Clean up if registration fails.
++    #if LINUX_VERSION_CODE <= KERNEL_VERSION(6,2,14)
++        ebbchar_class = class_create(THIS_MODULE, CLASS_NAME);
++    #else
++        ebbchar_class = class_create(CLASS_NAME);
++    #endif
++
++    if (IS_ERR(ebbchar_class)) {
++        unregister_chrdev(major_number, DEVICE_NAME);
++        pr_alert("Failed to register device class.\n");
++        return PTR_ERR(ebbchar_class);
++    }
++    pr_info("Successfully created character device class.\n");
++
++    // Register the device driver. Clean up if registration fails.
++    ebbchar_device = device_create(ebbchar_class, NULL, MKDEV(major_number, 0), NULL, DEVICE_NAME);
++    if (IS_ERR(ebbchar_device)) {
++        class_destroy(ebbchar_class);
++        unregister_chrdev(major_number, DEVICE_NAME);
++        pr_alert("Failed to create the character device. \n");
++        return PTR_ERR(ebbchar_device);
++    }
++
++    // Initialize the spin lock
++    spin_lock_init(&csi_lock);
++
++    // Made it! device was initialized
++    pr_info("Successfully created device class -- Device is ready to go! \n");
++
++    return 0;
++}
++
++static void __exit csi_exit(void)
++{
++    /* Delete and unregister the devices we have created and registered */
++    device_destroy(ebbchar_class, MKDEV(major_number, 0));    // Remove the device
++    class_unregister(ebbchar_class);                          // Unregister the device class
++    class_destroy(ebbchar_class);                             // Remove the device class
++    unregister_chrdev(major_number, DEVICE_NAME);             // Unregister through the major number
++
++    pr_info("Shutdown -- Goodbye CSI device!\n");
++}
++
++static int csi_open(struct inode* inode, struct file* file)
++{
++    if (n_readers == 1) {
++        pr_alert("Reading with multiple processes; Unsupported! Would cause queue read race conditions");
++        return -1;
++    }
++
++    n_readers += 1;
++    csi_tail = 0;
++    csi_head = 0;
++    csi_valid = false;
++
++    pr_info("CSI file open -- ready to record. \n");
++
++    return 0;
++}
++
++static int csi_close(struct inode* inode, struct file* file)
++{
++    // closing CSI file, recording should stop accordingly.
++    
++    if (n_readers > 0) n_readers -= 1;
++
++    if (csi_head != csi_tail) {
++        pr_warn("Unread CSI packets in queue! discarding!");
++    }
++
++    csi_tail = 0;
++    csi_head = 0;
++    csi_valid = false;
++
++    pr_info("CSI file closed. \n");
++    return 0;
++}
++
++static ssize_t csi_read(
++    struct file* file,
++    char __user* user_buf,
++    size_t       count,
++    loff_t*      ppos)
++{
++    u_int16_t               bytes_read  = 0;
++    u_int16_t               total_size  = 0;
++    u_int16_t               header_size = 0;
++    u_int8_t*               csi_buf_addr;
++    u_int16_t               csi_len;
++    unsigned long           errc;
++    unsigned long           flags;
++    struct ath9k_csi*       csi;
++    struct csi_user_info    userspace_header;
++    
++    *ppos = 0;
++
++    // Prevent reads when multiple handles to the file are open.
++    // Race conditions here completely break the driver otherwise.
++    if (n_readers != 1) {
++        return 0;
++    }
++
++    if (csi_head == csi_tail) {
++        // wait until time out
++        wait_event_interruptible_timeout(csi_queue, csi_head != csi_tail, 2*HZ);
++    }
++
++    // Likely timeout but no read; Avoid blocking readers by doing a zero-byte read.
++    if (csi_head == csi_tail) {
++        return 0;
++    }
++
++    // Acquire lock to avoid race condition
++    spin_lock_irqsave(&csi_lock, flags);
++
++    csi = (struct ath9k_csi*)&csi_buf[csi_tail];
++    header_size = sizeof(struct csi_user_info);
++
++    csi_len          = csi->pkt_status.csi_len;                 // csi length (bytes)
++    csi_buf_addr     = csi->csi_buf;                            // csi buffer
++
++
++    // Fill the "CSI Frame Header"
++    total_size = sizeof(struct csi_user_info) + csi_len;
++    userspace_header.pkt_status    = csi->pkt_status;
++    userspace_header.csi_frame_len = total_size;
++    userspace_header.sequence_num  = csi->sequence_num;
++
++
++    // Memcpy sanity check
++    if (header_size + csi_len > TX_BUF_LEN) {
++        pr_alert("Buffer size is insufficient for storing CSI packet "
++                "(header: %dB, CSI: %dB)",
++                header_size, csi_len);
++        // In case of error we still need to release the lock to continue
++        // normal operation
++        spin_unlock_irqrestore(&csi_lock, flags);
++        return 0;
++    }
++
++    memcpy(tx_buf, &userspace_header, header_size);             // copy the status to the buffer
++    bytes_read += header_size;                                  // advance 
++
++    if (csi_len > 0) {
++        memcpy(tx_buf + bytes_read, csi_buf_addr, csi_len);     // copy csi to the buffer
++        bytes_read += csi_len;                                  // advance length of copied CSI
++    }
++
++    errc = copy_to_user(user_buf, tx_buf, bytes_read);          // COPY to user buf
++    csi_tail = (csi_tail + 1) & CSI_BUF_MASK;                   // Advance ringbuffer
++
++    if (errc != 0) {                                            // Mark potential copy error
++        bytes_read = 0;
++        pr_alert("Failed to copy CSI buffer to user -- errc: errcode: %ld \n", errc);
++    }
++    
++    // Release lock so writer may continue
++    spin_unlock_irqrestore(&csi_lock, flags);
++    return bytes_read;
++}
++
++static ssize_t csi_write(
++    struct file*       file,
++    const char __user* user_buf,
++    size_t             count,
++    loff_t*            ppos)
++{
++    pr_debug("Wrote %zu bytes of CSI values to CSI recording file\n", count);
++    return 0;
++}
++
++void csi_record_payload(void* data, u_int16_t data_len)
++{
++    struct ath9k_csi* csi;
++    unsigned long flags;
++
++    // We only record payloads when there is exactly a single reader
++    if (n_readers != 1) {
++        return;
++    }
++
++    if( ((csi_head + 1) & CSI_BUF_MASK) == csi_tail) {    // check and update
++        wake_up_interruptible(&csi_queue);
++
++        // This wasn't done before, but the queue is full, so we shouldn't write to it. Writing
++        // now, even after the wakeup, could mean the reader hasnt finished yet. We would write
++        // across the end, effectively emptying the whole queue.
++        pr_alert("Queue full; can't record payload data. Dropping!");
++        return;
++    }
++
++    // Acquire lock to avoid race condition
++    spin_lock_irqsave(&csi_lock, flags);
++
++    csi = (struct ath9k_csi*) &csi_buf[csi_head];
++   
++       if (data_len < 24) {
++        pr_alert("Payload is too short (%d bytes); Can't extract sequence number!", data_len);
++        spin_unlock_irqrestore(&csi_lock, flags);
++        return;
++    }    
++
++    // Frame payload starts with MAC header:
++    //  Field: Frame CTL  |  Duration/ID  |  Addr 1  |  Addr 2  |  Addr 3  |  Sequence Control
++    //  Bytes:     2      |       2       |     6    |    6     |     6    |         2
++    // The two Sequence Control bytes are further decomposed into:
++    //           Byte 1          |          Byte 2
++    //   s3 s2 s1 s0 f3 f2 f1 f0 | s11 s10 s9 s8 s7 s6 s5 s4
++    // where s_i are the bits for the sequence number, f_i for the fragment number, with 0 being
++    // the least significant bit.
++    // TODO: Handle LSB-first architectures
++    u_int8_t const* payload = (u_int8_t const*) data;
++    csi->sequence_num  = (payload[22] & 0xF0) >> 4 | payload[23] << 4;
++
++    // Signalize readiness for reader
++    csi_valid = true; 
++    spin_unlock_irqrestore(&csi_lock, flags);
++}
++EXPORT_SYMBOL(csi_record_payload);
++
++void csi_record_status(
++    struct ath_hw*        ah,
++    struct ath_rx_status* rxs,
++    struct ar9003_rxs*    rxsp,
++    void*                 data,
++    u_int64_t             sys_timestamp_ns)
++{
++    struct ath9k_csi* csi;
++
++    u_int8_t chan_bw;
++    u_int8_t rx_not_sounding;
++    u_int8_t rx_hw_upload_data;
++    u_int8_t rx_hw_upload_data_valid;
++    u_int8_t rx_hw_upload_data_type;
++
++    unsigned long flags;
++    
++    rx_hw_upload_data       = (rxsp->status2 & AR_hw_upload_data)         ? 1 : 0;
++    rx_not_sounding         = (rxsp->status4 & AR_rx_not_sounding)        ? 1 : 0;
++    rx_hw_upload_data_valid = (rxsp->status4 & AR_hw_upload_data_valid)   ? 1 : 0;
++    rx_hw_upload_data_type  = MS(rxsp->status11, AR_hw_upload_data_type);
++
++    if(rxs->rs_phyerr == 0
++        && rx_hw_upload_data == 0
++        && rx_hw_upload_data_valid == 0
++        && rx_hw_upload_data_type == 0) {
++        // I have no clue what this call means. rs_phyerr doesnt sound good, but
++        // it happens extremely regularly (possibly on almost every packet?!)
++        // Even more oddly, I've seen this call happen multiple seconds after the
++        // last packet that should trigger CSI was sent and when all readers have
++        // disconnected already.
++        return;
++    }
++
++    // Need a started CSI packet (payload record) and exactly one reader.
++    if ((n_readers != 1) || !csi_valid) {
++        return;
++    }
++
++    // Acquire lock to avoid race condition
++    spin_lock_irqsave(&csi_lock, flags);
++
++    csi = (struct ath9k_csi*)& csi_buf[csi_head];
++    chan_bw                       = (rxsp->status4 & AR_2040) >> 1;
++    csi->pkt_status.sys_tstamp_ns = sys_timestamp_ns;    // Nanosecond host timestamp
++
++    csi->pkt_status.padding    = 0;                      // Explicitly zeroing padding byte
++    csi->pkt_status.tstamp     = rxs->rs_tstamp;         // time stamp of the rx packet
++    csi->pkt_status.channel    = ah->curchan->channel;   // Frequency of receiving channel
++    csi->pkt_status.chan_bw    = chan_bw;                // channel bandwidth
++    csi->pkt_status.phyerr     = rxs->rs_phyerr;         // PHY layer error code
++    csi->pkt_status.rssi       = rxs->rs_rssi;           // RSSI
++    csi->pkt_status.rssi_ctl0  = rxs->rs_rssi_ctl[0];    // RSSI for chain 0
++    csi->pkt_status.rssi_ctl1  = rxs->rs_rssi_ctl[1];    // RSSI for chain 1
++    csi->pkt_status.rssi_ctl2  = rxs->rs_rssi_ctl[2];    // RSSI for chain 2
++    csi->pkt_status.noise      = 0;                      // to be updated
++    csi->pkt_status.rate       = rxs->rs_rate;           // data rate
++
++    rx_hw_upload_data          = (rxsp->status2 & AR_hw_upload_data)       ? 1 : 0;
++    rx_not_sounding            = (rxsp->status4 & AR_rx_not_sounding)      ? 1 : 0;
++    rx_hw_upload_data_valid    = (rxsp->status4 & AR_hw_upload_data_valid) ? 1 : 0;
++    rx_hw_upload_data_type     = MS(rxsp->status11, AR_hw_upload_data_type);
++
++    // Decides how many tones(subcarriers) are used according to the channel bandwidth
++    // Value of zero corresponds to 20, Value of one to 40 MHz Channel Bandwidths.
++    csi->pkt_status.num_tones = (chan_bw == 1) ? 114 : 56;
++
++    // No other channel bandwidths are formally supported!
++    if (chan_bw != 0 && chan_bw != 1) {
++        pr_alert(
++            "| Invalid bandwidth specification encountered; \n"
++            "| Supported are 20/40 MHz Channels only. \n"
++            "| --> Defaulting to 20 MHz to commence possibly faulty operation. \n");
++    }
++
++    /* Find the number of transmission and receiver antennas
++        * NOTE: when the packet is received with an error
++        * the antenna number value is not correct
++        */
++    csi->pkt_status.num_rx_antennas = ar9300_get_nrx_csi(ah); 
++    csi->pkt_status.num_tx_antennas = (int) (rxs->rs_datalen * BITS_PER_BYTE)
++        / (int) (BITS_PER_COMPLEX_SYMBOL
++            * csi->pkt_status.num_rx_antennas
++            * csi->pkt_status.num_tones);
++    
++
++    // Log debug info
++    pr_debug(
++        "-- Number of receiving antennas    : %d \n"
++        "-- Number of transmitting antennas : %d \n\n",
++        csi->pkt_status.num_rx_antennas,
++        csi->pkt_status.num_tx_antennas
++    );
++
++    /* copy the csi value to the allocated csi buffer */
++    if (rxs->rs_datalen <= 0
++        || rx_hw_upload_data != 1
++        || rx_hw_upload_data_valid != 1
++        || rx_hw_upload_data_type != 1) {
++        pr_alert("Invalid hardware flags; Skipping packet");
++        csi->pkt_status.csi_len = 0;
++        csi_valid = false;
++        csi_head = (csi_head + 1) & CSI_BUF_MASK;
++        spin_unlock_irqrestore(&csi_lock, flags);
++        return;
++    }
++
++    csi->pkt_status.csi_len = rxs->rs_datalen;
++    
++    if (rxs->rs_datalen > CSI_FRAME_BUF_LEN){
++        pr_alert("Received CSI data of len %d exceeds internal buffer of length %d", rxs->rs_datalen, CSI_FRAME_BUF_LEN);
++        csi_valid = false;
++        csi_head = (csi_head + 1) & CSI_BUF_MASK;
++        spin_unlock_irqrestore(&csi_lock, flags);
++        return;
++    }
++    memcpy((void*)(csi->csi_buf), data, rxs->rs_datalen);
++
++
++    // Advance and release
++    csi_valid = false;
++    csi_head  = (csi_head + 1) & CSI_BUF_MASK;
++    spin_unlock_irqrestore(&csi_lock, flags);
++
++    // wake up waiting reader
++    wake_up_interruptible(&csi_queue);
++}
++EXPORT_SYMBOL(csi_record_status);
++
++
++module_init(csi_init);
++module_exit(csi_exit);
++
++MODULE_AUTHOR("YAXIONG XIE, FABIAN PORTNER");
++MODULE_LICENSE("GPL");
++MODULE_DESCRIPTION("CSI EXTRACTION USING MODIFIED ATH9K DRIVER");

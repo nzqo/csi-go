@@ -1,0 +1,49 @@
+diff --unified --recursive --no-dereference --text --unidirectional-new-file --ignore-trailing-space --ignore-space-change '--exclude=.git' '--exclude=README*' '--exclude=*.pdf' '--exclude=*.svg' '--exclude=*.vim' module_src/ath_orig/ath9k/ath9k_csi.h module_src/ath/ath9k/ath9k_csi.h
+--- module_src/ath_orig/ath9k/ath9k_csi.h
++++ module_src/ath/ath9k/ath9k_csi.h
+@@ -0,0 +1,42 @@
++#define CSI_FRAME_BUF_LEN         2800
++
++struct csi_pkt_status {
++    u_int64_t   tstamp;           /* h/w assigned timestamp */
++    u_int64_t   sys_tstamp_ns;    /* host epoch timestamp at time of receival */
++    u_int16_t   csi_len;          /* csi length */
++    u_int16_t   channel;          /* receiving channel frequency */
++    u_int8_t    phyerr;           /* phy error code */
++
++    u_int8_t    noise;            /* noise floor */
++    u_int8_t    rate;             /* h/w receive rate index */
++    u_int8_t    chan_bw;          /* receiving channel bandwidth */
++    u_int8_t    num_tones;        /* number of tones (subcarriers) */
++    u_int8_t    num_rx_antennas;  /* number of receiving antennas */
++    u_int8_t    num_tx_antennas;  /* number of transmitting anteannas */
++
++    int8_t      rssi;             /* rx frame RSSI */
++    int8_t      rssi_ctl0;        /* rx frame RSSI [ctl, chain 0] */
++    int8_t      rssi_ctl1;        /* rx frame RSSI [ctl, chain 1] */
++    int8_t      rssi_ctl2;        /* rx frame RSSI [ctl, chain 2] */
++
++    u_int8_t    padding;          /* 8-byte alignment to 32 byte of this struct */
++};
++
++/*!
++ * Struct containing information about user-space buffer contents.
++ * When reading from the character device, we fill the buffer as follows:
++ *     csi_user_info  | csi values (if any) | wifi frame payload
++ * We call this a "CSI Frame"
++ */
++struct csi_user_info {
++    struct csi_pkt_status pkt_status;  // Packet status
++    u_int16_t sequence_num;            // Packet sequence number
++    u_int16_t csi_frame_len;           // Total length in buffer: pkt_status, CSI and payload (dynamic lengths)
++};
++typedef struct csi_user_info csi_user_info;
++
++/*!
++ * Internal struct for CSI exchange within the module.
++ */
++struct ath9k_csi {
++    struct csi_pkt_status pkt_status;
++    u_int16_t   sequence_num;                  // Packet sequence number
++    u_int8_t    csi_buf[CSI_FRAME_BUF_LEN];    // buffer for csi value -- 3 antennae, each with 114 subcarriers, real and imaginary part
++};

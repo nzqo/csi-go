@@ -1,0 +1,12 @@
+diff --unified --recursive --no-dereference --text --unidirectional-new-file --ignore-trailing-space --ignore-space-change '--exclude=.git' '--exclude=README*' '--exclude=*.pdf' '--exclude=*.svg' '--exclude=*.vim' module_src/ath_original/ath9k/init.c module_src/ath/ath9k/init.c
+--- module_module_src/ath_original/ath9k/init.c	2015-10-03 13:49:38.000000000 +0200
++++ module_src/ath/ath9k/init.c	2023-08-02 10:36:57.298125642 +0200
+@@ -831,7 +831,7 @@
+ 		hw->flags |= IEEE80211_HW_SUPPORTS_PS;
+ 
+ 	if (sc->sc_ah->caps.hw_caps & ATH9K_HW_CAP_HT) {
+-		hw->flags |= IEEE80211_HW_AMPDU_AGGREGATION;
++		//hw->flags |= IEEE80211_HW_AMPDU_AGGREGATION;
+ 
+ 		if (AR_SREV_9280_20_OR_LATER(ah))
+ 			hw->radiotap_mcs_details |=

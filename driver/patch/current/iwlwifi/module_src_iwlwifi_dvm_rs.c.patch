@@ -1,0 +1,28 @@
+diff --unified --recursive --no-dereference --text --unidirectional-new-file --ignore-trailing-space --ignore-space-change '--exclude=.git' '--exclude=README*' '--exclude=*.pdf' '--exclude=*.svg' '--exclude=*.vim' module_src/iwlwifi_orig/dvm/rs.c module_src/iwlwifi/dvm/rs.c
+--- module_src/iwlwifi_orig/dvm/rs.c
++++ module_src/iwlwifi/dvm/rs.c
+@@ -873,6 +873,10 @@
+ 		return;
+ 	}
+ 
++	/* Exit if in a fixed-rate mode */
++	if (priv && priv->rotate_rates)
++		return;
++
+ 	if (!ieee80211_is_data(hdr->frame_control) ||
+ 	    info->flags & IEEE80211_TX_CTL_NO_ACK)
+ 		return;
+@@ -2689,6 +2693,13 @@
+ 		priv_sta = NULL;
+ 	}
+ 
++	/* Exit if in a fixed-rate mode */
++	if (priv && priv->rotate_rates) {
++		info->control.rates[0].flags = 0;
++		info->control.rates[0].idx = 0;
++		return;
++	}
++
+ 	rate_idx  = lq_sta->last_txrate_idx;
+ 
+ 	if (lq_sta->last_rate_n_flags & RATE_MCS_HT_MSK) {

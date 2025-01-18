@@ -1,0 +1,50 @@
+diff --unified --recursive --no-dereference --text --unidirectional-new-file --ignore-trailing-space --ignore-space-change '--exclude=.git' '--exclude=README*' '--exclude=*.pdf' '--exclude=*.svg' '--exclude=*.vim' module_src/iwlwifi_original/iwl-drv.c module_src/iwlwifi/iwl-drv.c
+--- module_src/iwlwifi_original/iwl-drv.c	2023-04-13 16:55:55.790509932 +0200
++++ module_src/iwlwifi/iwl-drv.c	2023-03-16 20:02:29.032349834 +0100
+@@ -1166,6 +1166,12 @@
+ 		api_ver = IWL_UCODE_API(drv->fw.ucode_ver);
+ 
+ 	/*
++	 * Dan -- disable firmware version checks. Instead, verify
++	 * that the firmware has the size expected for the hacked firmware
++	 */
++	(void)api_min; /* Dan -- remove warning */
++#if 0
++	/*
+ 	 * api_ver should match the api version forming part of the
+ 	 * firmware filename ... but we don't check for that and only rely
+ 	 * on the API version read from firmware header from here on forward
+@@ -1193,6 +1199,12 @@
+ 				      "http://www.intellinuxwireless.org/.\n");
+ 		}
+ 	}
++#endif
++
++	if (ucode_raw->size != 336252) {
++		IWL_ERR(drv,
++			"Firmware size does not match iwlwifi-5000-2.ucode.sigcomm2010. The UW 802.11n CSI Tool will not work.\n");
++	}
+ 
+ 	/*
+ 	 * In mvm uCode there is no difference between data and instructions
+@@ -1468,6 +1480,9 @@
+ 	.restart_fw = true,
+ 	.bt_coex_active = true,
+ 	.power_level = IWL_POWER_INDEX_1,
++#ifdef CONFIG_IWLWIFI_DEBUG
++	.debug_level = IWL_DL_FW_ERRORS,
++#endif
+ 	.d0i3_disable = true,
+ #ifndef CONFIG_IWLWIFI_UAPSD
+ 	.uapsd_disable = true,
+@@ -1562,6 +1577,10 @@
+ MODULE_PARM_DESC(debug, "debug output mask");
+ #endif
+ 
++module_param_named(connector_log, iwlwifi_mod_params.connector_log, int,
++		S_IRUGO);
++MODULE_PARM_DESC(connector_log,
++		"set connector log mask (default 0 [nothing])");
+ module_param_named(swcrypto, iwlwifi_mod_params.sw_crypto, int, S_IRUGO);
+ MODULE_PARM_DESC(swcrypto, "using crypto in software (default 0 [hardware])");
+ module_param_named(11n_disable, iwlwifi_mod_params.disable_11n, uint, S_IRUGO);

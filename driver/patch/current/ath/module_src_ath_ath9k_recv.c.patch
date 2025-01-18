@@ -1,0 +1,30 @@
+diff --unified --recursive --no-dereference --text --unidirectional-new-file --ignore-trailing-space --ignore-space-change '--exclude=.git' '--exclude=README*' '--exclude=*.pdf' '--exclude=*.svg' '--exclude=*.vim' module_src/ath_orig/ath9k/recv.c module_src/ath/ath9k/recv.c
+--- module_src/ath_orig/ath9k/recv.c
++++ module_src/ath/ath9k/recv.c
+@@ -634,19 +634,25 @@
+ 	struct ath_common *common = ath9k_hw_common(ah);
+ 	struct sk_buff *skb;
+ 	struct ath_rxbuf *bf;
++	u_int64_t sys_timestamp_ns;
+ 	int ret;
+ 
+ 	skb = skb_peek(&rx_edma->rx_fifo);
+ 	if (!skb)
+ 		return false;
+ 
++	// Get nanosecond timestamp on host.
++	// NOTE: This is the "closest" time to the arrival of data to decide to
++	// take a timestamp.
++	sys_timestamp_ns = ktime_get_real_ns();
++
+ 	bf = SKB_CB_ATHBUF(skb);
+ 	BUG_ON(!bf);
+ 
+ 	dma_sync_single_for_cpu(sc->dev, bf->bf_buf_addr,
+ 				common->rx_bufsize, DMA_FROM_DEVICE);
+ 
+-	ret = ath9k_hw_process_rxdesc_edma(ah, rs, skb->data);
++	ret = ath9k_hw_process_rxdesc_edma(ah, rs, skb->data, sys_timestamp_ns);
+ 	if (ret == -EINPROGRESS) {
+ 		/*let device gain the buffer again*/
+ 		dma_sync_single_for_device(sc->dev, bf->bf_buf_addr,

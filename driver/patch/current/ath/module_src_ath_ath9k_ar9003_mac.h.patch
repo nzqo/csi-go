@@ -1,0 +1,13 @@
+diff --unified --recursive --no-dereference --text --unidirectional-new-file --ignore-trailing-space --ignore-space-change '--exclude=.git' '--exclude=README*' '--exclude=*.pdf' '--exclude=*.svg' '--exclude=*.vim' module_src/ath_orig/ath9k/ar9003_mac.h module_src/ath/ath9k/ar9003_mac.h
+--- module_src/ath_orig/ath9k/ar9003_mac.h
++++ module_src/ath/ath9k/ar9003_mac.h
+@@ -115,7 +115,8 @@
+ 
+ int ath9k_hw_process_rxdesc_edma(struct ath_hw *ah,
+ 				 struct ath_rx_status *rxs,
+-				 void *buf_addr);
++				 void *buf_addr,
++				 u_int64_t sys_timestamp_ns);
+ void ath9k_hw_reset_txstatus_ring(struct ath_hw *ah);
+ void ath9k_hw_setup_statusring(struct ath_hw *ah, void *ts_start,
+ 			       u32 ts_paddr_start,

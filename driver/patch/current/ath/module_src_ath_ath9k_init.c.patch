@@ -1,0 +1,18 @@
+diff --unified --recursive --no-dereference --text --unidirectional-new-file --ignore-trailing-space --ignore-space-change '--exclude=.git' '--exclude=README*' '--exclude=*.pdf' '--exclude=*.svg' '--exclude=*.vim' module_src/ath_orig/ath9k/init.c module_src/ath/ath9k/init.c
+--- module_src/ath_orig/ath9k/init.c
++++ module_src/ath/ath9k/init.c
+@@ -967,12 +967,11 @@
+ 		ieee80211_hw_set(hw, SUPPORTS_PS);
+ 
+ 	if (sc->sc_ah->caps.hw_caps & ATH9K_HW_CAP_HT) {
+-		ieee80211_hw_set(hw, AMPDU_AGGREGATION);
+-
+-		if (AR_SREV_9280_20_OR_LATER(ah))
++		if (AR_SREV_9280_20_OR_LATER(ah)) {
+ 			hw->radiotap_mcs_details |=
+ 				IEEE80211_RADIOTAP_MCS_HAVE_STBC;
+ 	}
++	}
+ 
+ 	if (AR_SREV_9160_10_OR_LATER(sc->sc_ah) || ath9k_modparam_nohwcrypt)
+ 		ieee80211_hw_set(hw, MFP_CAPABLE);

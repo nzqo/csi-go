@@ -1,0 +1,11 @@
+diff --unified --recursive --no-dereference --text --unidirectional-new-file --ignore-trailing-space --ignore-space-change '--exclude=.git' '--exclude=README*' '--exclude=*.pdf' '--exclude=*.svg' '--exclude=*.vim' module_src/ath_orig/ath9k/ar9003_phy.c module_src/ath/ath9k/ar9003_phy.c
+--- module_src/ath_orig/ath9k/ar9003_phy.c
++++ module_src/ath/ath9k/ar9003_phy.c
+@@ -678,6 +678,7 @@
+ 
+ 	REG_WRITE(ah, AR_SELFGEN_MASK, tx);
+ }
++EXPORT_SYMBOL(ar9003_hw_set_chain_masks);
+ 
+ /*
+  * Override INI values with chip specific configuration.

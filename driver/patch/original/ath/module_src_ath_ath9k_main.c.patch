@@ -1,0 +1,11 @@
+diff --unified --recursive --no-dereference --text --unidirectional-new-file --ignore-trailing-space --ignore-space-change '--exclude=.git' '--exclude=README*' '--exclude=*.pdf' '--exclude=*.svg' '--exclude=*.vim' module_src/ath_original/ath9k/main.c module_src/ath/ath9k/main.c
+--- module_module_src/ath_original/ath9k/main.c	2015-10-03 13:49:38.000000000 +0200
++++ module_src/ath/ath9k/main.c	2023-08-02 10:36:57.298125642 +0200
+@@ -2116,7 +2116,6 @@
+ 		bf = avp->av_bcbuf;
+ 		if (!bf || !bf->bf_mpdu)
+ 			goto skip;
+-
+ 		status = ath9k_hw_txprocdesc(ah, bf->bf_desc, &ts);
+ 		if (status == -EINPROGRESS)
+ 			goto skip;

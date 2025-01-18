@@ -1,0 +1,12 @@
+diff --unified --recursive --no-dereference --text --unidirectional-new-file --ignore-trailing-space --ignore-space-change '--exclude=.git' '--exclude=README*' '--exclude=*.pdf' '--exclude=*.svg' '--exclude=*.vim' module_src/iwlwifi_original/iwl-trans.h module_src/iwlwifi/iwl-trans.h
+--- module_src/iwlwifi_original/iwl-trans.h	2023-04-13 16:55:55.793843265 +0200
++++ module_src/iwlwifi/iwl-trans.h	2023-03-16 20:02:29.035683167 +0100
+@@ -316,7 +316,7 @@
+ 	__free_pages(r->_page, r->_rx_page_order);
+ }
+ 
+-#define MAX_NO_RECLAIM_CMDS	6
++#define MAX_NO_RECLAIM_CMDS	7
+ 
+ #define IWL_MASK(lo, hi) ((1 << (hi)) | ((1 << (hi)) - (1 << (lo))))
+ 

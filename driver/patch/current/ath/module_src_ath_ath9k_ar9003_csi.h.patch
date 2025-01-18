@@ -1,0 +1,50 @@
+diff --unified --recursive --no-dereference --text --unidirectional-new-file --ignore-trailing-space --ignore-space-change '--exclude=.git' '--exclude=README*' '--exclude=*.pdf' '--exclude=*.svg' '--exclude=*.vim' module_src/ath_orig/ath9k/ar9003_csi.h module_src/ath/ath9k/ar9003_csi.h
+--- module_src/ath_orig/ath9k/ar9003_csi.h
++++ module_src/ath/ath9k/ar9003_csi.h
+@@ -0,0 +1,46 @@
++/*
++ * =====================================================================================
++ *       Filename:  ar9003_csi.h
++ *
++ *    Description:  ar9003_csi data structure definition
++ *        Version:  1.0
++ *
++ *         Author:  Yaxiong Xie
++ *         Email :  <xieyaxiongfly@gmail.com>
++ *   Organization:  WANDS group @ Nanyang Technological University
++ *
++ *   Copyright (c)  WANDS group @ Nanyang Technological University
++ *
++ *   Refurbished by: Fabian Portner <fportner@tudelft.nl>
++ * =====================================================================================
++ */
++
++#include "hw.h"
++#include "mac.h"
++#include "ar9003_mac.h"
++#include "ath9k_csi.h"
++
++#define AR_rx_ness                  0x00000060
++#define AR_rx_ness_S                5
++#define AR_ness                     0xc0000000
++#define AR_ness_S                   30
++#define AR_hw_upload_data           0x00400000
++#define AR_hw_upload_data_S         22
++#define AR_rx_not_sounding          0x00000010
++#define AR_not_sounding             0x20000000
++#define AR_hw_upload_data_valid     0x00000080
++#define AR_hw_upload_data_valid_S   7
++#define AR_hw_upload_data_type      0x06000000
++#define AR_hw_upload_data_type_S    25
++
++#define AR_xmit_data_tries0   0x000f0000
++#define AR_xmit_data_tries0_S 16
++#define AR_xmit_data_tries1   0x00f00000
++#define AR_xmit_data_tries1_S 20
++#define AR_xmit_data_tries2   0x0f000000
++#define AR_xmit_data_tries2_S 24
++#define AR_xmit_data_tries3   0xf0000000
++#define AR_xmit_data_tries3_S 28
++
++void csi_record_payload(void* data, u_int16_t data_len);
++void csi_record_status(struct ath_hw *hw, struct ath_rx_status *rxs, struct ar9003_rxs *rxsp, void* data, u_int64_t sys_timestamp_ns);

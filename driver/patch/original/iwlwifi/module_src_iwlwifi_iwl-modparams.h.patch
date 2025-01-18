@@ -1,0 +1,26 @@
+diff --unified --recursive --no-dereference --text --unidirectional-new-file --ignore-trailing-space --ignore-space-change '--exclude=.git' '--exclude=README*' '--exclude=*.pdf' '--exclude=*.svg' '--exclude=*.vim' module_src/iwlwifi_original/iwl-modparams.h module_src/iwlwifi/iwl-modparams.h
+--- module_src/iwlwifi_original/iwl-modparams.h	2023-04-13 16:55:55.793843265 +0200
++++ module_src/iwlwifi/iwl-modparams.h	2023-03-16 20:02:29.035683167 +0100
+@@ -95,12 +95,13 @@
+  * @disable_11n: disable 11n capabilities, default = 0,
+  *	use IWL_[DIS,EN]ABLE_HT_* constants
+  * @amsdu_size_8K: enable 8K amsdu size, default = 0
++ * @connector_log: which connector messages, default = 0
+  * @restart_fw: restart firmware, default = 1
+  * @bt_coex_active: enable bt coex, default = true
+  * @led_mode: system default, default = 0
+  * @power_save: enable power save, default = false
+  * @power_level: power level, default = 1
+- * @debug_level: levels are IWL_DL_*
++ * @debug_level: levels are IWL_DL_*, default = IWL_DL_FW_ERRORS
+  * @ant_coupling: antenna coupling in dB, default = 0
+  * @d0i3_disable: disable d0i3, default = 1,
+  * @lar_disable: disable LAR (regulatory), default = 0
+@@ -111,6 +112,7 @@
+ 	unsigned int disable_11n;
+ 	int amsdu_size_8K;
+ 	bool restart_fw;
++	int connector_log;
+ 	bool bt_coex_active;
+ 	int led_mode;
+ 	bool power_save;

@@ -1,0 +1,58 @@
+diff --unified --recursive --no-dereference --text --unidirectional-new-file --ignore-trailing-space --ignore-space-change '--exclude=.git' '--exclude=README*' '--exclude=*.pdf' '--exclude=*.svg' '--exclude=*.vim' module_src/iwlwifi_orig/dvm/csi.h module_src/iwlwifi/dvm/csi.h
+--- module_src/iwlwifi_orig/dvm/csi.h
++++ module_src/iwlwifi/dvm/csi.h
+@@ -0,0 +1,54 @@
++/******************************************************************************
++ *
++ * GPL LICENSE SUMMARY
++ *
++ * Copyright(c) 2008-2011 Intel Corporation. All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of version 2 of the GNU General Public License as
++ * published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110,
++ * USA
++ *
++ * The full GNU General Public License is included in this distribution
++ * in the file called LICENSE.GPL.
++ *
++ * Contact Information:
++ * Daniel Halperin <dhalperi@cs.washington.edu>
++ * University of Washington CSE, 185 Stevens Way AC101, Seattle, WA 98195-2350
++ * Anmol Sheth <anmol.n.sheth@intel.com>
++ * Intel Labs Seattle, 1100 NE 45th St, Seattle, WA 98105
++ *
++ *****************************************************************************/
++
++/*
++ * Instead of defining them where they are used, I extracted some symbols to
++ * the csi.[hc] files. This makes the driver modifications less invasive and
++ * easier to port to different kernel versions. 
++ */
++#ifndef __iwl_csi_h__
++#define __iwl_csi_h__
++
++#include "dev.h"
++
++// NOTE: The other transmitter callbacks are found in `agn.h`
++void iwlagn_bfee_notif(struct iwl_priv *priv, struct iwl_rx_cmd_buffer *rxb);
++
++
++extern const u8 iwl_monitor_addr[ETH_ALEN];
++static inline bool is_monitor_ether_addr(const u8 *addr)
++{
++    if (WARN_ON(addr == NULL))
++        return 0;
++    return !memcmp(addr, iwl_monitor_addr, ETH_ALEN);
++}
++
++#endif /* __iwl_csi_h__ */

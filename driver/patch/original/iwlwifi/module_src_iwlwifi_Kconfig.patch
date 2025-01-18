@@ -1,0 +1,11 @@
+diff --unified --recursive --no-dereference --text --unidirectional-new-file --ignore-trailing-space --ignore-space-change '--exclude=.git' '--exclude=README*' '--exclude=*.pdf' '--exclude=*.svg' '--exclude=*.vim' module_src/iwlwifi_original/Kconfig module_src/iwlwifi/Kconfig
+--- module_src/iwlwifi_original/Kconfig	2023-04-13 16:55:55.783843265 +0200
++++ module_src/iwlwifi/Kconfig	2023-03-16 20:02:29.025683167 +0100
+@@ -53,6 +53,7 @@
+ 
+ config IWLDVM
+ 	tristate "Intel Wireless WiFi DVM Firmware support"
++	depends on CONNECTOR
+ 	default IWLWIFI
+ 	help
+ 	  This is the driver that supports the DVM firmware. The list

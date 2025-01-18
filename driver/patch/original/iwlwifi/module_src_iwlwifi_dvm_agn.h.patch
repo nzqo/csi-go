@@ -1,0 +1,26 @@
+diff --unified --recursive --no-dereference --text --unidirectional-new-file --ignore-trailing-space --ignore-space-change '--exclude=.git' '--exclude=README*' '--exclude=*.pdf' '--exclude=*.svg' '--exclude=*.vim' module_src/iwlwifi_original/dvm/agn.h module_src/iwlwifi/dvm/agn.h
+--- module_src/iwlwifi_original/dvm/agn.h	2023-04-13 16:55:55.787176598 +0200
++++ module_src/iwlwifi/dvm/agn.h	2023-03-16 20:02:29.025683167 +0100
+@@ -221,6 +221,8 @@
+ 				   struct iwl_device_cmd *cmd);
+ int iwlagn_rx_reply_tx(struct iwl_priv *priv, struct iwl_rx_cmd_buffer *rxb,
+ 			       struct iwl_device_cmd *cmd);
++int iwlagn_bfee_notif(struct iwl_priv *priv, struct iwl_rx_cmd_buffer *rxb,
++		      struct iwl_device_cmd *cmd);
+ 
+ static inline u32 iwl_tx_status_to_mac80211(u32 status)
+ {
+@@ -489,4 +491,13 @@
+ 		return s;
+ 	return "UNKNOWN";
+ }
++
++extern const u8 iwl_monitor_addr[ETH_ALEN];
++static inline bool is_monitor_ether_addr(const u8 *addr)
++{
++	if (WARN_ON(addr == NULL))
++		return 0;
++	return !memcmp(addr, iwl_monitor_addr, ETH_ALEN);
++}
++
+ #endif /* __iwl_agn_h__ */

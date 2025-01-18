@@ -1,0 +1,92 @@
+diff --unified --recursive --no-dereference --text --unidirectional-new-file --ignore-trailing-space --ignore-space-change '--exclude=.git' '--exclude=README*' '--exclude=*.pdf' '--exclude=*.svg' '--exclude=*.vim' module_src/ath_orig/ath9k/ar9003_mac.c module_src/ath/ath9k/ar9003_mac.c
+--- module_src/ath_orig/ath9k/ar9003_mac.c
++++ module_src/ath/ath9k/ar9003_mac.c
+@@ -17,6 +17,7 @@
+ #include "hw.h"
+ #include "ar9003_mac.h"
+ #include "ar9003_mci.h"
++#include "ar9003_csi.h"
+ 
+ static void ar9003_hw_rx_enable(struct ath_hw *hw)
+ {
+@@ -30,6 +31,7 @@
+ 	int checksum = 0;
+ 	u32 val, ctl12, ctl17;
+ 	u8 desc_len;
++	u_int8_t rate1,rate2,rate3,rate4;
+ 
+ 	desc_len = ((AR_SREV_9462(ah) || AR_SREV_9565(ah)) ? 0x18 : 0x17);
+ 
+@@ -151,13 +153,34 @@
+ 		| set11nRateFlags(i->rates, 3) | set11nChainSel(i->rates, 3)
+ 		| SM(i->rtscts_rate, AR_RTSCTSRate));
+ 
+-	WRITE_ONCE(ads->ctl19, AR_Not_Sounding);
+-
+ 	WRITE_ONCE(ads->ctl20, SM(i->txpower[1], AR_XmitPower1));
+ 	WRITE_ONCE(ads->ctl21, SM(i->txpower[2], AR_XmitPower2));
+ 	WRITE_ONCE(ads->ctl22, SM(i->txpower[3], AR_XmitPower3));
++
++	rate1 = (ads->ctl14 >> 24) & 0xff;
++	rate2 = (ads->ctl14 >> 16) & 0xff;
++	rate3 = (ads->ctl14 >> 8)  & 0xff;
++	rate4 = (ads->ctl14 >> 0)  & 0xff;
++
++	if (rate1 >= 0x80 || rate2 >= 0x80 || rate3 >= 0x80) {
++		const u32 ar_mask = ~(AR_xmit_data_tries1 | AR_xmit_data_tries2 | AR_xmit_data_tries3);
++		WRITE_ONCE(ads->ctl19, 0);
++		WRITE_ONCE(ads->ctl13, READ_ONCE(ads->ctl13) & ar_mask);
++		WRITE_ONCE(ads->ctl20, READ_ONCE(ads->ctl20) & 0x3f000000);
++		WRITE_ONCE(ads->ctl21, READ_ONCE(ads->ctl21) & 0x3f000000);
++		WRITE_ONCE(ads->ctl22, READ_ONCE(ads->ctl22) & 0x3f000000);
++	} else {
++		WRITE_ONCE(ads->ctl19, AR_Not_Sounding);
++	}
++
++	if (rate4 >= 0x80) {
++		WRITE_ONCE(ads->ctl19, 0);
++	} else {
++		WRITE_ONCE(ads->ctl19, AR_Not_Sounding);
++	}
+ }
+ 
++
+ static u16 ar9003_calc_ptr_chksum(struct ar9003_txc *ads)
+ {
+ 	int checksum;
+@@ -479,8 +502,11 @@
+ EXPORT_SYMBOL(ath9k_hw_addrxbuf_edma);
+ 
+ int ath9k_hw_process_rxdesc_edma(struct ath_hw *ah, struct ath_rx_status *rxs,
+-				 void *buf_addr)
++				 void *buf_addr, u_int64_t sys_timestamp_ns)
+ {
++	void* 	  data_addr;
++	u_int16_t data_len;
++
+ 	struct ar9003_rxs *rxsp = buf_addr;
+ 	unsigned int phyerr;
+ 
+@@ -585,6 +611,22 @@
+ 	if (rxsp->status11 & AR_KeyMiss)
+ 		rxs->rs_status |= ATH9K_RXERR_KEYMISS;
+ 
++	data_len = rxs->rs_datalen;
++	data_addr = buf_addr + 48; // sizeof(ar9003_rxs)
++
++	if (rxsp->status11 & AR_CRCErr) {
++		if (rxs->rs_rate >= 0x80) {
++			csi_record_payload(data_addr, data_len);
++			csi_record_status(ah, rxs, rxsp, data_addr, sys_timestamp_ns);
++		}
++	} else {
++		if (rxs->rs_more == 1)
++			csi_record_payload(data_addr, data_len);
++
++		if (rxs->rs_rate >= 0x80)
++			csi_record_status(ah, rxs, rxsp, data_addr, sys_timestamp_ns);
++	}
++
+ 	return 0;
+ }
+ EXPORT_SYMBOL(ath9k_hw_process_rxdesc_edma);

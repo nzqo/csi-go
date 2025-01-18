@@ -1,0 +1,22 @@
+diff --unified --recursive --no-dereference --text --unidirectional-new-file --ignore-trailing-space --ignore-space-change '--exclude=.git' '--exclude=README*' '--exclude=*.pdf' '--exclude=*.svg' '--exclude=*.vim' module_src/ath_original/ath9k/hw.c module_src/ath/ath9k/hw.c
+--- module_module_src/ath_original/ath9k/hw.c	2015-10-03 13:49:38.000000000 +0200
++++ module_src/ath/ath9k/hw.c	2023-08-02 10:36:57.298125642 +0200
+@@ -1818,6 +1818,7 @@
+ 	u32 saveLedState;
+ 	u32 saveDefAntenna;
+ 	u32 macStaId1;
++	u32 tmp;
+ 	u64 tsf = 0;
+ 	s64 usec = 0;
+ 	int r;
+@@ -2028,6 +2029,10 @@
+ 		ah->radar_conf.ext_channel = IS_CHAN_HT40(chan);
+ 		ath9k_hw_set_radar_params(ah);
+ 	}
++	//csi_debug 
++    	tmp = REG_READ(ah,0x8344);
++    	tmp |= (1 << 28);
++    	REG_WRITE(ah, 0x8344,tmp);
+ 
+ 	return 0;
+ }

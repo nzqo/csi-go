@@ -1,0 +1,9 @@
+diff --unified --recursive --no-dereference --text --unidirectional-new-file --ignore-trailing-space --ignore-space-change '--exclude=.git' '--exclude=README*' '--exclude=*.pdf' '--exclude=*.svg' '--exclude=*.vim' module_src/iwlwifi_orig/mvm/Makefile module_src/iwlwifi/mvm/Makefile
+--- module_src/iwlwifi_orig/mvm/Makefile
++++ module_src/iwlwifi/mvm/Makefile
+@@ -15,4 +15,4 @@
+ iwlmvm-$(CONFIG_PM) += d3.o
+ iwlmvm-$(CONFIG_IWLMEI) += vendor-cmd.o
+ 
+-ccflags-y += -I $(srctree)/$(src)/../
++ccflags-y += -I $(src)/../
