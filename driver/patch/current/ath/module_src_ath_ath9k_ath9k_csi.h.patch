@@ -1,7 +1,7 @@
 diff --unified --recursive --no-dereference --text --unidirectional-new-file --ignore-trailing-space --ignore-space-change '--exclude=.git' '--exclude=README*' '--exclude=*.pdf' '--exclude=*.svg' '--exclude=*.vim' module_src/ath_orig/ath9k/ath9k_csi.h module_src/ath/ath9k/ath9k_csi.h
 --- module_src/ath_orig/ath9k/ath9k_csi.h
 +++ module_src/ath/ath9k/ath9k_csi.h
-@@ -0,0 +1,42 @@
+@@ -0,0 +1,45 @@
 +#define CSI_FRAME_BUF_LEN         2800
 +
 +struct csi_pkt_status {
